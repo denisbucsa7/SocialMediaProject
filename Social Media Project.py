@@ -71,9 +71,10 @@ class User:
         self.posts.append(content)
 
 class Post:
-    def __init__(self,author, content):
+    def __init__(self,author, content, timestamp):
         self.author = author
         self.content = content
+        self.timestamp = timestamp
 
 class SocialMediaApp:
     def __init__(self):
@@ -105,4 +106,59 @@ class SocialMediaApp:
 
 class Queue:
     def __init__(self):
-        self
+        self.items = []
+
+    def enqueue(self,item):
+        self.items.appen(item) #O(1)
+
+    def dequeue(self):
+        if not self.is_emptty():
+            return self.items.pop(0) # O(n)
+        return None
+    
+    def is_empty(self):
+        return len(self.items) == 0
+    
+class Sorter:
+    @staticmethod
+    def merge_sort(arr, key=lambda x:x):
+        if len(arr) <= 1:
+            return arr
+        mid = len(arr) // 2
+        left = Sorter.merge_sort(arr[:mid], key)
+        right = Sorter.merge_sort(arr[mid:],key)
+
+        return Sorter.merge(left,right,key)
+    
+    @staticmethod
+    def merge(left,right,key):
+        result = []
+        i = j = 0
+        while i < len(left) and j < len(right):
+            if key(left[i]) <= key(right[j]):
+                result.append(left[i])
+                i+=1
+            else:
+                result.append(right[j])
+                j+=1
+        result.extend(left[i:])
+        result.extend(right[j:])
+        return result
+
+class Search:
+    @staticmethod
+    def binary_search(arr, target, key=lambda x:x):#
+        low = 0
+        high = len(arr) -1
+
+        while low <= high:
+            mid = (low + high) // 2
+
+            if key(arr[mid]) == target:
+                return mid
+            elif key (arr[mid]) < target:
+                low = mid + 1
+            else:
+                high = mid - 1
+
+        return -1
