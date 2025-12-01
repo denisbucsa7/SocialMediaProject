@@ -1,4 +1,7 @@
 #Social Media Project 
+from datetime import datetime
+from collections import deque
+
 class Node:
     def __init__(self,key,value):
         self.key = key
@@ -8,13 +11,13 @@ class Node:
 class HashTable:
     def __init__(self,size=50):
         self.size = size
-        self.table = None * size
+        self.table = [None] * size
 
     def hash(self,key):
         return hash(key) % self.size
     
     def insert(self,key, value):
-        index = self._hash(key)
+        index = self.hash(key)
         head = self.table[index]
 
         current = head
@@ -29,7 +32,7 @@ class HashTable:
         self.table[index] = new_node
 
     def get(self,key):
-        index = self._hash(key)
+        index = self.hash(key)
         current = self.table[index]
 
         while current:
@@ -39,7 +42,7 @@ class HashTable:
         return None
     
     def delete(self,key):
-        index = self._hash(key)
+        index = self.hash(key)
         current = self.table[index]
         previous = None
 
@@ -54,6 +57,15 @@ class HashTable:
             current = current.next
 
         return False
+    
+    def total_users(self):
+        count = 0
+        for bucket in self.table:
+            current = bucket
+            while current:
+                count +=1
+                current = current.next
+        return count
     
 #System Clases:
 class User:
@@ -76,16 +88,32 @@ class Post:
         self.content = content
         self.timestamp = timestamp
 
+class Queue:
+    def __init__(self):
+        self.items = []
+
+    def enqueue(self,item):
+        self.items.append(item) #O(1)
+
+    def dequeue(self):
+        if not self.is_empty():
+            return self.items.pop(0) # O(n)
+        return None
+    
+    def is_empty(self):
+        return len(self.items) == 0
+
 class SocialMediaApp:
     def __init__(self):
         self.users = HashTable()
         self.posts = []
+        self.notification_queue = Queue()
 
     def register(self, username, password):
         if self.users.get(username) is not None:
             return "Username already taken"
         
-        new_user = User(username.password)
+        new_user = User(username, password)
         self.users.insert(username, new_user)
         return "User registered"
     
@@ -98,26 +126,18 @@ class SocialMediaApp:
     def create_post(self,username,content):
         user = self.users.get(username)
         if user:
-            new_post = Post(username,content)
+            new_post = Post(username,content,datetime.now())
             user.add_post(new_post)
             self.posts.append(new_post)
             return "Post uploaded"
         return "User not found"
-
-class Queue:
-    def __init__(self):
-        self.items = []
-
-    def enqueue(self,item):
-        self.items.appen(item) #O(1)
-
-    def dequeue(self):
-        if not self.is_emptty():
-            return self.items.pop(0) # O(n)
-        return None
     
-    def is_empty(self):
-        return len(self.items) == 0
+    def total_users(self) -> int:
+        return self.users.total_users()
+    
+    def total_posts(self) -> int:
+        return len(self.posts)
+
     
 class Sorter:
     @staticmethod
