@@ -132,6 +132,37 @@ class SocialMediaApp:
             return "Post uploaded"
         return "User not found"
     
+    def send_friend_request(self,sender,receiver):
+        sender_user = self.users.get(sender)
+        receiver_user = self.user.get(receiver)
+
+        if not sender_user or not receiver_user:
+            return "User not found"
+        
+        request = FriendRequest(sender,receiver,datetime.now())
+        self.notification_queue.enqueue(request)
+        return "Friend Request sent"
+    
+    def process_friend_requests(self):
+        #this processes any queued friend requests
+        while not self.notification_queue.is_empty():
+            req = self.notification_queue.dequeue()
+            receiver = self.users.get(req.receiver)
+            sender = self.users.get(req.sender)
+
+            receiver.add_friend(req.sender)
+            sender.add_friend(req.receiver)
+
+        return "All friend requests processed"
+    
+    def get_feed(self,username):
+        user = self.users.get(username)
+        if not user:
+            return []
+        sorted_posts = Sorter.merge_sort(self.posts,key=lambda p: p.timestamp)
+
+        return sorted_posts[::-1]
+    
     def total_users(self) -> int:
         return self.users.total_users()
     
@@ -182,3 +213,10 @@ class Search:
                 high = mid - 1
 
         return -1
+    
+class FriendRequest:
+    def __init__(self,sender,receiver,timestamp):
+        self.sender = sender
+        self.receiver = receiver
+        self.timestamp = timestamp
+
