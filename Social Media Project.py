@@ -163,6 +163,32 @@ class SocialMediaApp:
 
         return sorted_posts[::-1]
     
+    def search_user_posts(self,username, keyword):
+        user = self.users.get(username)
+        if not user:
+            return []
+        results = []
+
+        for post in user.posts:
+            if keyword.lower() in post.content.lower():
+                results.append(post)
+
+        return results
+    
+    def delete_post(self, username, timestamp):
+        user = self.users.get(username)
+        if not user:
+            return "user not found"
+        
+        for p in user.posts:
+            if p.timestamp == timestamp:
+                user.posts.remove(p)
+                self.posts.remove(p)
+                return "post has been delete"
+            
+        return "post not been found"
+    
+    
     def total_users(self) -> int:
         return self.users.total_users()
     
@@ -219,4 +245,3 @@ class FriendRequest:
         self.sender = sender
         self.receiver = receiver
         self.timestamp = timestamp
-
