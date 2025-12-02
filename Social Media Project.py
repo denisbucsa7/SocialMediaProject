@@ -84,6 +84,7 @@ class User:
         self.password = password
         self.posts = []
         self.friends = []
+        self.friend_requests = []
 
     def add_friend(self,username):
         if username not in self.friends:
@@ -157,7 +158,7 @@ class SocialMediaApp:
             return "User not found"
         
         request = FriendRequest(sender,receiver,datetime.now())
-        self.friend_requests.enqueue(request)
+        receiver_user.friend_request.append(request)
         return "Friend Request sent"
     
     def process_friend_requests(self):
