@@ -1,4 +1,6 @@
 #Social Media Project 
+import tkinter as tk
+from tkinter import simpledialog, messagebox, scrolledtext
 from datetime import datetime
 from collections import deque
 
@@ -76,7 +78,12 @@ class HashTable:
                 current = current.next
         return count
 
-    
+class FriendRequest:
+    def __init__(self,sender,receiver,timestamp):
+        self.sender = sender
+        self.receiver = receiver
+        self.timestamp = timestamp
+
 #System Clases:
 class User:
     def __init__(self,username,password):
@@ -159,6 +166,7 @@ class SocialMediaApp:
         
         request = FriendRequest(sender,receiver,datetime.now())
         receiver_user.friend_request.append(request)
+        self.notification_queue.enqueue(f"{sender} sent a friend request to {receiver}")
         return "Friend Request sent"
     
     def process_friend_requests(self):
@@ -249,7 +257,6 @@ class SocialMediaApp:
     
     def total_posts(self) -> int:
         return len(self.posts)
-
     
 class Sorter:
     @staticmethod
@@ -295,8 +302,42 @@ class Search:
 
         return -1
     
-class FriendRequest:
-    def __init__(self,sender,receiver,timestamp):
-        self.sender = sender
-        self.receiver = receiver
-        self.timestamp = timestamp
+class SocialMediaGUI:
+    def __init__(self, app):
+        self.app = app
+        self.current_user = None
+
+        self.root = tk.Tk()
+        self.root.title("Social Media App")
+
+        self.frame_top = tk.Frame(self.root)
+        self.frame_top.pack(pady=10)
+
+        self.frame_middle = tk.Frame(self.root)
+        self.frame_middle.pack(pady=10)
+
+        self.frame_bottom = tk.Frame(self.root)
+        self.frame_bottom.pack(pady=10)
+
+        tk.Label(self.frame_top, text = "Username").grid(row=0, column = 0)
+        self.entry_username = tk.Entry(self.frame_top)
+        self.entry_username.grid(row = 0, column =1)
+        tk.Label(self.frame_top,text="Password").grid(row=1,column=0)
+        self.entry_password = tk.Entry(self.frame_top,show = "*")
+        self.entry_password.grid(row=1,column=1)
+
+        tk.Button(self.frame_top, text="Register", command = self.register).grid(row=2,column=0)
+        tk.Button(self.frame_top, text ="Login", command = self.login).grid(row=2,column=1)
+
+        self.entry_post = tk.Entry(self.frame_middle, width = 50)
+        self.entry_post.pack(side=tk.LEFT)
+        tk.Button(self.frame_middle, text = "Post", command = self.create_post).pack(side=tk.LEFT)
+
+        self.feed_box = scrolledtext.ScrolledText(self.frame_bottom,width =60, height =20)
+        self.feed_box.pack()
+
+        tk.Button(self.root, text ="Send Friend Request", command = self.send_friend_request).pack(pady=5)
+        tk.Button(self.root, text ="Process Friend Requests",command = self.self.process_friend_requests).pack(pady=5)
+        tk.Button(self.root, text ="Show Notifications", command = self.show_notifications).pack(pady=5)
+
+        self.root.mainloop()
