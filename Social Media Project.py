@@ -143,15 +143,21 @@ class SocialMediaApp:
             return "Post uploaded"
         return "User not found"
     
+    def get_notifications(self):
+        notifications = []
+        while not self.notification_queue.is_empty():
+            notifications.append(self.notification_queue.dequeue())
+        return notifications
+    
     def send_friend_request(self,sender,receiver):
         sender_user = self.users.get(sender)
-        receiver_user = self.user.get(receiver)
+        receiver_user = self.users.get(receiver)
 
         if not sender_user or not receiver_user:
             return "User not found"
         
         request = FriendRequest(sender,receiver,datetime.now())
-        self.notification_queue.enqueue(request)
+        self.friend_requests.enqueue(request)
         return "Friend Request sent"
     
     def process_friend_requests(self):
@@ -163,14 +169,14 @@ class SocialMediaApp:
                 continue
 
             receiver = self.users.get(req.receiver)
-            sender = self.user.get(req.sender)
-            
+            sender = self.users.get(req.sender)
+
             if receiver and sender:
-                receiver.add_friend(sender.username if isinstance(sender.User) else req.sender)
-                sender.add_friend(receiver.username if isinstance(receiver, User) else req.receiver)
+                receiver.add_friend(sender.username)
+                sender.add_friend(receiver.username)
 
                 #enqueues a simple notification for both
-                self.notifications.enqueue(f"{req.receiver} and {req.sender} are now friends ")
+                self.notification_queue.enqueue(f"{req.receiver} and {req.sender} are now friends")
                 processed +=1
 
         return f"Processed {processed} friend requests"
