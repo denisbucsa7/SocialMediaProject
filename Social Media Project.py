@@ -181,6 +181,34 @@ class SocialMediaApp:
 
         return f"Processed {processed} friend requests"
     
+    def accept_friend_request(self, receiver, sender):
+        user = self.users.get(receiver)
+        if not user:
+            return "user not been found"
+        
+        for fr in user.friend_requests:
+            if fr.sender == sender:
+                user.friend_requests.remove(fr)
+                user.add_friend(sender)
+                self.users.get(sender).add_friend(receiver)
+                self.notification_queue.enqueue(f"{receiver} accepted {sender}'s friend request")
+                return "friend request accepted"
+            
+        return "friend request not found"
+    
+    def decline_friend_request(self,receiver,sender):
+        user = self.users.get(receiver)
+        if not user:
+            return "user not been found"
+        
+        for fr in user.friend_requests:
+            if fr.sender == sender:
+                user.friend_requests.remove(fr)
+                self.notification_queue.enqueue(f"{receiver} declined {sender}'s friend request")
+                return "friend request has been declined"
+            
+        return "friend request not found"
+    
     def get_feed(self,username):
         user = self.users.get(username)
         if not user:
