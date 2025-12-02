@@ -67,6 +67,16 @@ class HashTable:
                 current = current.next
         return count
     
+    def total_items(self):
+        count = 0
+        for bucket in self.table:
+            current = bucket
+            while current:
+                count+=1
+                current = current.next
+        return count
+
+    
 #System Clases:
 class User:
     def __init__(self,username,password):
@@ -108,6 +118,7 @@ class SocialMediaApp:
         self.users = HashTable()
         self.posts = []
         self.notification_queue = Queue()
+        self.friend_requests = Queue()
 
     def register(self, username, password):
         if self.users.get(username) is not None:
@@ -145,15 +156,24 @@ class SocialMediaApp:
     
     def process_friend_requests(self):
         #this processes any queued friend requests
-        while not self.notification_queue.is_empty():
-            req = self.notification_queue.dequeue()
+        processed = 0
+        while not self.friend_requests.is_empty():
+            req = self.friend_requests.dequeue()
+            if not req:
+                continue
+
             receiver = self.users.get(req.receiver)
-            sender = self.users.get(req.sender)
+            sender = self.user.get(req.sender)
+            
+            if receiver and sender:
+                receiver.add_friend(sender.username if isinstance(sender.User) else req.sender)
+                sender.add_friend(receiver.username if isinstance(receiver, User) else req.receiver)
 
-            receiver.add_friend(req.sender)
-            sender.add_friend(req.receiver)
+                #enqueues a simple notification for both
+                self.notifications.enqueue(f"{req.receiver} and {req.sender} are now friends ")
+                processed +=1
 
-        return "All friend requests processed"
+        return f"Processed {processed} friend requests"
     
     def get_feed(self,username):
         user = self.users.get(username)
