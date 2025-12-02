@@ -341,3 +341,41 @@ class SocialMediaGUI:
         tk.Button(self.root, text ="Show Notifications", command = self.show_notifications).pack(pady=5)
 
         self.root.mainloop()
+
+    def register(self):
+        username = self.entry_username.get()
+        password = self.entry_password.get()
+        msg = self.app.register(username,password)
+        messagebox.showinfo("Register".msg)
+
+    def login(self):
+        username = self.entry_username.get()
+        password = self.entry_password.get()
+        msg = self.app.register(username,password)
+        if "succesful" in msg:
+            self.current_user = username
+            messagebox.showinfo("Login", f"{msg} as {username}")
+            self.refresh_feed()
+        else:
+            messagebox.showerror("Login Failed",msg)
+
+    def create_post(self):
+        if not self.current_user:
+            messagebox.showwarning("Not Logged in", "please log in first")
+            return
+        content = self.entry_post.get()
+        msg = self.app.create_post(self.current_user,content)
+        messagebox.showinfo("Post",msg)
+        self.entry_post.delete(0, tk.END)
+        self.refresh_feed()
+
+    def refresh_feed(self):
+        if not self.current_user:
+            return
+        posts = self.app.get_feed(self.current_user)
+        self.feed_box.delete("1.0",tk.END)
+
+        for p in posts:
+            self.feed_box.insert(tk.END,f"{p.author} [{p.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]: {p.content}\n")
+    
+    
