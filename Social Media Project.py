@@ -378,4 +378,31 @@ class SocialMediaGUI:
         for p in posts:
             self.feed_box.insert(tk.END,f"{p.author} [{p.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]: {p.content}\n")
     
+    def send_friend_request(self):
+        if not self.current_user:
+            messagebox.showwarning("Not logged in", "please login first")
+            return
+        receiver = simpledialog.askstring("Friend request", "enter username to request to: ")
+
+        if receiver:
+            msg = self.app.send_friend_request(self.current_user,receiver)
+            messagebox.showinfo("Friend Request", msg)
     
+    def process_friend_requests(self):
+        if not self.current_user:
+            messagebox.showwarning("Not logged in", "please login first")
+            return
+        msg = self.app.process_friend_requests()
+        messagebox.showinfo("Friend Requsts", msg)
+        self.refresh_feed()
+
+    def show_notifications(self):
+        notifications = self.app.get_notifications()
+        if notifications:
+            messagebox.showinfo("Notifications", "\n".join(notifications))
+        else:
+            messagebox.showinfo("Notifcations", "No new notifications")
+
+if __name__ == "__main__":
+    app = SocialMediaApp
+    gui = SocialMediaGUI(app)
