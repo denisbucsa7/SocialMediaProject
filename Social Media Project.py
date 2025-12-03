@@ -3,6 +3,8 @@ import tkinter as tk
 from tkinter import simpledialog, messagebox, scrolledtext
 from datetime import datetime
 from collections import deque
+import json
+from collections import deque
 
 class Node:
     def __init__(self,key,value):
@@ -97,8 +99,8 @@ class User:
         if username not in self.friends:
             self.friends.append(username)
 
-    def add_post(self, content):
-        self.posts.append(content)
+    def add_post(self, post):
+        self.posts.append(post)
 
 class Post:
     def __init__(self,author, content, timestamp):
@@ -108,15 +110,13 @@ class Post:
 
 class Queue:
     def __init__(self):
-        self.items = []
+        self.items = deque()
 
     def enqueue(self,item):
-        self.items.append(item) #O(1)
+        self.items.append(item) # adds to the end
 
     def dequeue(self):
-        if not self.is_empty():
-            return self.items.pop(0) # O(n)
-        return None
+        return self.items.popleft() if self.items else None # remove from front in O(1)
     
     def is_empty(self):
         return len(self.items) == 0
@@ -126,14 +126,72 @@ class SocialMediaApp:
         self.users = HashTable()
         self.posts = []
         self.notification_queue = Queue()
-        self.friend_requests = Queue()
+        self.load_data()
 
-    def register(self, username, password):
-        if self.users.get(username) is not None:
-            return "Username already taken"
+    def save_data(self):
+        data = {"users":{},
+                "posts":[]}
+        for bucket in self.users.table:
+            current = bucket
+            while current:
+                user = current.value
+                data["users"][user.username]= {
+                    "password": user.password,
+                    "friends": user.friends,
+                    "posts": [
+                        {
+                            "content": p.content,
+                            "timestamp": p.timestamp.strftime("%d-%m-%Y %H:%M:%S")
+                        }
+                        for p in user.posts
+                    ],
+                    "friend_requests":[
+                        {
+                            "sender": fr.sender,
+                            "receiver": fr.receiver,
+                            "timestamp": fr.timestamp.strftime("%d-%m-%Y %H:%M:%S")
+                        }
+                        for fr in user.friend_requests
+                    ]
+                }
+                current = current.next
+        for p in self.posts:
+            data["posts"].append({
+                "author":p.author,
+                "content":p.content,
+                "timestamp":p.timestamp.strftime("%d-%m-%Y %H:%M:%S")
+            })
+        with open("database.json","w") as f:
+            json.dump(data, f, indent=4)
+
+    def load_data(self):
+        try:
+            with open("database.json", "r") as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return
         
+        for username, udata in data["users"].items():
+            user = User(username,udata["password"])
+            user.friends = udata["friends"]
+
+            for p in udata["posts"]:
+                post = Post(username,p["content"], datetime.strptime(p["timestamp"], "%d-%m-%Y %H:%M:%S"))
+                user.posts.append(post)
+                self.posts.append(post)
+            
+            for fr in udata["friend_requests"]:
+                req = FriendRequest(fr["sender"], fr["receiver"], datetime.strptime(fr["timestamp"], "%d-%m-%Y %H:%M:%S"))
+                user.friend_requests.append(req)
+
+            self.users.insert(username,user)
+                
+    def register(self, username, password):
+        if self.users.get(username):
+            return "Username already taken"
         new_user = User(username, password)
         self.users.insert(username, new_user)
+        self.save_data()
         return "User registered"
     
     def login(self,username,password):
@@ -144,12 +202,13 @@ class SocialMediaApp:
     
     def create_post(self,username,content):
         user = self.users.get(username)
-        if user:
-            new_post = Post(username,content,datetime.now())
-            user.add_post(new_post)
-            self.posts.append(new_post)
-            return "Post uploaded"
-        return "User not found"
+        if not user:
+            return "user not found"
+        post = Post(username, content, datetime.now())
+        user.add_post(post)
+        self.posts.append(post)
+        self.save_data()
+        return "post has been uploaded"
     
     def get_notifications(self):
         notifications = []
@@ -164,31 +223,11 @@ class SocialMediaApp:
         if not sender_user or not receiver_user:
             return "User not found"
         
-        request = FriendRequest(sender,receiver,datetime.now())
-        receiver_user.friend_request.append(request)
+        fr = FriendRequest(sender,receiver,datetime.now())
+        receiver_user.friend_requests.append(fr)
         self.notification_queue.enqueue(f"{sender} sent a friend request to {receiver}")
+        self.save_data()
         return "Friend Request sent"
-    
-    def process_friend_requests(self):
-        #this processes any queued friend requests
-        processed = 0
-        while not self.friend_requests.is_empty():
-            req = self.friend_requests.dequeue()
-            if not req:
-                continue
-
-            receiver = self.users.get(req.receiver)
-            sender = self.users.get(req.sender)
-
-            if receiver and sender:
-                receiver.add_friend(sender.username)
-                sender.add_friend(receiver.username)
-
-                #enqueues a simple notification for both
-                self.notification_queue.enqueue(f"{req.receiver} and {req.sender} are now friends")
-                processed +=1
-
-        return f"Processed {processed} friend requests"
     
     def accept_friend_request(self, receiver, sender):
         user = self.users.get(receiver)
@@ -201,6 +240,7 @@ class SocialMediaApp:
                 user.add_friend(sender)
                 self.users.get(sender).add_friend(receiver)
                 self.notification_queue.enqueue(f"{receiver} accepted {sender}'s friend request")
+                self.save_data()
                 return "friend request accepted"
             
         return "friend request not found"
@@ -214,6 +254,7 @@ class SocialMediaApp:
             if fr.sender == sender:
                 user.friend_requests.remove(fr)
                 self.notification_queue.enqueue(f"{receiver} declined {sender}'s friend request")
+                self.save_data()
                 return "friend request has been declined"
             
         return "friend request not found"
@@ -238,6 +279,18 @@ class SocialMediaApp:
 
         return results
     
+    def search_post_by_timestamp(self,username, target_timestamp):
+        #uses binary search to find post by the timestamp, returns post object if found, else none
+        user = self.users.get(username)
+        if not user:
+            return None
+        sorted_posts = Sorter.merge_sort(user.posts, key=lambda p: p.timestamp)
+
+        index = Search.binary_search(sorted_posts, target_timestamp, key=lambda p: p.timestamp)
+        if index != -1:
+            return sorted_posts[index]
+        return None
+    
     def delete_post(self, username, timestamp):
         user = self.users.get(username)
         if not user:
@@ -247,6 +300,7 @@ class SocialMediaApp:
             if p.timestamp == timestamp:
                 user.posts.remove(p)
                 self.posts.remove(p)
+                self.save_data()
                 return "post has been delete"
             
         return "post not been found"
@@ -337,8 +391,9 @@ class SocialMediaGUI:
         self.feed_box.pack()
 
         tk.Button(self.root, text ="Send Friend Request", command = self.send_friend_request).pack(pady=5)
-        tk.Button(self.root, text ="Process Friend Requests",command = self.self.process_friend_requests).pack(pady=5)
+        tk.Button(self.root, text ="Show Friend Requests",command = self.show_friend_requests).pack(pady=5)
         tk.Button(self.root, text ="Show Notifications", command = self.show_notifications).pack(pady=5)
+        tk.Button(self.root, text="Search Post By Timestamp", command = self.search_post_gui).pack(pady=5)
 
         self.root.mainloop()
 
@@ -346,12 +401,12 @@ class SocialMediaGUI:
         username = self.entry_username.get()
         password = self.entry_password.get()
         msg = self.app.register(username,password)
-        messagebox.showinfo("Register".msg)
+        messagebox.showinfo("Register",msg)
 
     def login(self):
         username = self.entry_username.get()
         password = self.entry_password.get()
-        msg = self.app.register(username,password)
+        msg = self.app.login(username,password)
         if "succesful" in msg:
             self.current_user = username
             messagebox.showinfo("Login", f"{msg} as {username}")
@@ -369,6 +424,26 @@ class SocialMediaGUI:
         self.entry_post.delete(0, tk.END)
         self.refresh_feed()
 
+    def search_post_gui(self):
+        #GUI interface to search for post by timestamp
+        if not self.current_user:
+            messagebox.showwarning("Not logged in", "log in first")
+            return
+        ts_str = simpledialog.askstring("Search post", "enter timestamp (dd-mm-yyyy HH:MM:SS): ")
+        if not ts_str:
+            return
+        try:
+            target_ts = datetime.strptime(ts_str, "%d-%m-%Y %H:%M:%S")
+        except ValueError:
+            messagebox.showerror("Error", "Invalid timestamp formatting")
+            return
+        post = self.app.search_post_by_timestamp(self.current_user, target_ts)
+        if post:
+            messagebox.showinfo("Post found",f"{post.author} [{post.timestamp.strftime('%d-%m-%Y %H:%M:%S')}]: {post.content}")#
+        else:
+            messagebox.showinfo("Post not found", "No post at that current timestamp")
+
+
     def refresh_feed(self):
         if not self.current_user:
             return
@@ -376,7 +451,7 @@ class SocialMediaGUI:
         self.feed_box.delete("1.0",tk.END)
 
         for p in posts:
-            self.feed_box.insert(tk.END,f"{p.author} [{p.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]: {p.content}\n")
+            self.feed_box.insert(tk.END,f"{p.author} [{p.timestamp.strftime('%d-%m-%Y %H:%M:%S')}]: {p.content}\n")
     
     def send_friend_request(self):
         if not self.current_user:
@@ -388,12 +463,18 @@ class SocialMediaGUI:
             msg = self.app.send_friend_request(self.current_user,receiver)
             messagebox.showinfo("Friend Request", msg)
     
-    def process_friend_requests(self):
+    def show_friend_requests(self):
         if not self.current_user:
             messagebox.showwarning("Not logged in", "please login first")
             return
-        msg = self.app.process_friend_requests()
-        messagebox.showinfo("Friend Requsts", msg)
+        user_obj = self.app.users.get(self.current_user)
+        requests = user_obj.friend_requests
+        for fr in requests.copy():
+            answer = messagebox.askyesno("Friend Request", f"{fr.sender} sent you a request. Accept?")
+            if answer:
+                self.app.accept_friend_request(self.current_user, fr.sender)
+            else:
+                self.app.decline_friend_request(self.current_user, fr.sender)
         self.refresh_feed()
 
     def show_notifications(self):
@@ -404,5 +485,5 @@ class SocialMediaGUI:
             messagebox.showinfo("Notifcations", "No new notifications")
 
 if __name__ == "__main__":
-    app = SocialMediaApp
+    app = SocialMediaApp()
     gui = SocialMediaGUI(app)
