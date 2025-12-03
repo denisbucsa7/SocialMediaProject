@@ -403,6 +403,9 @@ class SocialMediaGUI:
         msg = self.app.register(username,password)
         messagebox.showinfo("Register",msg)
 
+        self.entry_username.delete(0, tk.END)
+        self.entry_password.delete(0, tk.END)
+
     def login(self):
         username = self.entry_username.get()
         password = self.entry_password.get()
@@ -410,6 +413,8 @@ class SocialMediaGUI:
         if "succesful" in msg:
             self.current_user = username
             messagebox.showinfo("Login", f"{msg} as {username}")
+            self.entry_username.delete(0, tk.END)
+            self.entry_password.delete(0, tk.END)
             self.refresh_feed()
         else:
             messagebox.showerror("Login Failed",msg)
@@ -422,6 +427,7 @@ class SocialMediaGUI:
         msg = self.app.create_post(self.current_user,content)
         messagebox.showinfo("Post",msg)
         self.entry_post.delete(0, tk.END)
+        self.entry_post.delete(0,tk.END)
         self.refresh_feed()
 
     def search_post_gui(self):
