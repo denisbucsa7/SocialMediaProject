@@ -395,6 +395,10 @@ class SocialMediaGUI:
 
         tk.Button(self.frame_top, text="Register", command = self.register).grid(row=2,column=0)
         tk.Button(self.frame_top, text ="Login", command = self.login).grid(row=2,column=1)
+        tk.Button(self.root, text ="Logout", command = self.logout, width = 20).pack(pady=5)
+        
+        self.label_current_user = tk.Label(self.frame_top, text = "Not signed in")
+        self.label_current_user.grid(row = 3, columnspan = 2, pady=5)
 
         self.entry_post = tk.Entry(self.frame_middle, width = 50)
         self.entry_post.pack(side=tk.LEFT)
@@ -428,12 +432,21 @@ class SocialMediaGUI:
         msg = self.app.login(username,password)
         if "succesful" in msg:
             self.current_user = username
+            self.label_current_user.config(text= f"Signed in as {username}")
             messagebox.showinfo("Login", f"{msg} as {username}")
             self.entry_username.delete(0, tk.END)
             self.entry_password.delete(0, tk.END)
             self.refresh_feed()
         else:
             messagebox.showerror("Login Failed",msg)
+            
+        #logout through GUI
+    def logout(self):
+        if messagebox.askyesno("Logout","Are you sure you want to log out?"):
+            self.current_user = None
+            self.label_current_user.config(text="Not signed in")
+            messagebox.showinfo("Logged out", "You have been logged out")
+                
     #create a post through GUI
     def create_post(self):
         if not self.current_user:
